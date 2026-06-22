@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOC Cyber Security Incident Detection Platform</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  
+  <!-- RxDB CDN dependencies -->
+  <script src="https://unpkg.com/rxdb@14.13.0/dist/rxdb.umd.js"></script>
+  
+  <style>
+    :root {
+      --bg-darker: #080b11;
+      --bg-dark: #0f141c;
+      --bg-card: rgba(22, 30, 46, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-yellow: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #8b5cf6;
+      
+      --glow-cyan: rgba(6, 182, 212, 0.25);
+      --glow-green: rgba(16, 185, 129, 0.25);
+      --glow-yellow: rgba(245, 158, 11, 0.25);
+      --glow-red: rgba(239, 68, 68, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-darker);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.08) 0, transparent 50%),
+        radial-gradient(at 50% 0%, rgba(139, 92, 246, 0.05) 0, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(239, 68, 68, 0.05) 0, transparent 50%);
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-darker);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* Header styling */
+    header {
+      background: rgba(15, 20, 28, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      color: #000;
+      font-family: 'Share Tech Mono', monospace;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      box-shadow: 0 0 15px var(--glow-cyan);
+    }
+
+    .logo-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: linear-gradient(to right, #ffffff, var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px var(--glow-green);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.offline {
+      background-color: var(--accent-red);
+      box-shadow: 0 0 8px var(--glow-red);
+    }
+
+    /* Container */
+    .dashboard-container {
+      max-width: 1600px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(8px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--accent-cyan);
+    }
+
+    .stat-card.incidents::before { background: var(--accent-cyan); }
+    .stat-card.alerts::before { background: var(--accent-yellow); }
+    .stat-card.notifications::before { background: var(--accent-purple); }
+
+    .stat-info h3 {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    .stat-icon {
+      font-size: 2rem;
+      opacity: 0.3;
+    }
+
+    /* Layout Main */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Card Panels */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.5rem;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+      margin-bottom: 2rem;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .panel-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-subtitle {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--accent-cyan);
+      font-size: 0.9rem;
+    }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .form-control {
+      width: 100%;
+      background: rgba(8, 11, 17, 0.7);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: var(--text-main);
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--glow-cyan);
+    }
+
+    select.form-control {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      background-size: 1rem;
+    }
+
+    .btn {
+      display: inline-block;
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 0.85rem 1.5rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn:hover {
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    /* Lists and Tables */
+    .list-wrapper {
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
+    .list-item {
+      background: rgba(8, 11, 17, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .list-item:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: rgba(8, 11, 17, 0.8);
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 0.5rem;
+    }
+
+    .item-title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .item-meta {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .item-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-top: 0.5rem;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    .badge-low { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-medium { background: rgba(245, 158, 11, 0.15); color: var(--accent-yellow); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-high { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-critical { 
+      background: rgba(239, 68, 68, 0.3); 
+      color: #ff8888; 
+      border: 1px solid var(--accent-red);
+      animation: pulse 1.5s infinite;
+    }
+
+    .badge-open { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+    .badge-investigating { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.3); }
+    .badge-resolved { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-closed { background: rgba(156, 163, 175, 0.15); color: var(--text-muted); border: 1px solid rgba(156, 163, 175, 0.3); }
+
+    /* Custom Notification Logs */
+    .log-item {
+      font-family: 'Share Tech Mono', monospace;
+      padding: 0.6rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+      border-left: 3px solid var(--accent-cyan);
+      background: rgba(8, 11, 17, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .log-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .log-recipient {
+      color: var(--accent-purple);
+      font-weight: bold;
+    }
+
+    /* Actions */
+    .status-select-sm {
+      background: var(--bg-darker);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 0.8rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .actions-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.75rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Real-time Indicator banner */
+    .sync-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      margin-bottom: 1.5rem;
+      background: rgba(6, 182, 212, 0.05);
+      border: 1px dashed rgba(6, 182, 212, 0.3);
+      border-radius: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-cyan);
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    .rxdb-badge {
+      display: inline-block;
+      background: #e60067;
+      color: white;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-container">
+      <div class="logo-badge">SOC-SHIELD</div>
+      <div class="logo-title">Security Incident Detection Center</div>
+    </div>
+    
+    <div class="connection-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">System Active</span>
+      <span class="rxdb-badge">RxDB Connected</span>
+    </div>
+  </header>
+
+  <!-- Container -->
+  <div class="dashboard-container">
+    
+    <!-- Stats Row -->
+    <div class="stats-grid">
+      <div class="stat-card incidents">
+        <div class="stat-info">
+          <h3>Total Incidents</h3>
+          <div class="stat-value" id="statIncidentsCount">0</div>
+        </div>
+        <div class="stat-icon">🚨</div>
+      </div>
+      <div class="stat-card alerts">
+        <div class="stat-info">
+          <h3>Active Alerts</h3>
+          <div class="stat-value" id="statAlertsCount">0</div>
+        </div>
+        <div class="stat-icon">⚡</div>
+      </div>
+      <div class="stat-card notifications">
+        <div class="stat-info">
+          <h3>NOC Dispatches</h3>
+          <div class="stat-value" id="statNotificationsCount">0</div>
+        </div>
+        <div class="stat-icon">📢</div>
+      </div>
+    </div>
+
+    <!-- Sync notification banner -->
+    <div class="sync-indicator">
+      <span style="display:inline-block; width:6px; height:6px; background-color:var(--accent-cyan); border-radius:50%; animation: pulse 1s infinite;"></span>
+      <span>AUTOMATIC RXDB DATABASE SYNCHRONIZATION WITH REST GATEWAY ACTIVE</span>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-grid">
+      
+      <!-- Left Column: Form & Incidents -->
+      <div>
+        
+        <!-- Panel 1: Create Incident -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Report New Incident</div>
+            <div class="panel-subtitle">RPC_CREATE_INCIDENT</div>
+          </div>
+          
+          <form id="incidentForm">
+            <div class="form-group">
+              <label for="title">Incident Title</label>
+              <input type="text" id="title" class="form-control" placeholder="e.g., Ransomware outbreak on subnet B" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="description">Incident Description</label>
+              <textarea id="description" class="form-control" rows="3" placeholder="Provide detailed network metrics, ports involved, anomalies detected..."></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="severity">Severity Level</label>
+              <select id="severity" class="form-control" required>
+                <option value="LOW">LOW - Local Scan/Anomalies</option>
+                <option value="MEDIUM" selected>MEDIUM - Port Scan / Bruteforce</option>
+                <option value="HIGH">HIGH - System Intrusion / Exfiltration</option>
+                <option value="CRITICAL">CRITICAL - System Outage / Ransomware</option>
+              </select>
+            </div>
+            
+            <button type="submit" class="btn">Dispatch Incident Report</button>
+          </form>
+        </div>
+
+        <!-- Panel 2: Live Incidents List -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Incident Queue (RxDB Local Storage)</div>
+            <div class="panel-subtitle">QUERY_INCIDENTS_ALL</div>
+          </div>
+          
+          <div class="list-wrapper" id="incidentsList">
+            <div class="empty-state">No incidents filed. Use the form above to dispatch one.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Alerts & Logs -->
+      <div>
+        
+        <!-- Panel 3: Live Security Alerts -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Generated Threats / Alerts (Kafka Triggered)</div>
+            <div class="panel-subtitle">TOPIC_ALERT_GENERATED</div>
+          </div>
+          
+          <div class="list-wrapper" id="alertsList">
+            <div class="empty-state">Waiting for threats to be intercepted...</div>
+          </div>
+        </div>
+
+        <!-- Panel 4: Notification Logs -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">SOC Dispatch Notification Logs (Kafka Triggered)</div>
+            <div class="panel-subtitle">TOPIC_NOTIFICATION_DISPATCHED</div>
+          </div>
+          
+          <div class="list-wrapper" id="notificationsList">
+            <div class="empty-state">No notification dispatches registered.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Client Script for RxDB and REST integrations -->
+  <script>
+    const API_URL = window.location.origin;
+
+    // Global RxDB Database instance reference
+    let dbInstance = null;
+
+    // Helper functions for UI rendering
+    function getSeverityBadgeClass(severity) {
+      switch (severity?.toUpperCase()) {
+        case 'LOW': return 'badge-low';
+        case 'MEDIUM': return 'badge-medium';
+        case 'HIGH': return 'badge-high';
+        case 'CRITICAL': return 'badge-critical';
+        default: return 'badge-medium';
+      }
+    }
+
+    function getStatusBadgeClass(status) {
+      switch (status?.toUpperCase()) {
+        case 'OPEN': return 'badge-open';
+        case 'INVESTIGATING': return 'badge-investigating';
+        case 'RESOLVED': return 'badge-resolved';
+        case 'CLOSED': return 'badge-closed';
+        default: return 'badge-open';
+      }
+    }
+
+    // 1. Initialize RxDB
+    async function initRxDB() {
+      try {
+        console.log('Initializing RxDB...');
+        
+        // Define schemas
+        const incidentSchema = {
+          title: 'incident schema',
+          version: 0,
+          primaryKey: 'id',
+          type: 'object',
+          properties: {
+            id: { type: 'string', maxLength: 100 },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            severity: { type: 'string' },
+            status: { type: 'string' },
+            createdAt: { type: 'string' }
+          },
+          required: ['id', 'title', 'severity', 'status', 'createdAt']
+        };
+
+        const alertSchema = {
+          title: 'alert schema',
+          version: 0,
+          primaryKey: 'id',
+          type: 'object',
+          properties: {
+            id: { type: 'string', maxLength: 100 },
+            incidentId: { type: 'string' },
+            riskLevel: { type: 'string' },
+            message: { type: 'string' },
+            createdAt: { type: 'string' }
+          },
+          required: ['id', 'incidentId', 'riskLevel', 'message', 'createdAt']
+        };
+
+        const notificationSchema = {
+          title: 'notification schema',
+          version: 0,
+          primaryKey: 'id',
+          type: 'object',
+          properties: {
+            id: { type: 'string', maxLength: 100 },
+            alertId: { type: 'string' },
+            recipient: { type: 'string' },
+            message: { type: 'string' },
+            sentAt: { type: 'string' }
+          },
+          required: ['id', 'alertId', 'recipient', 'message', 'sentAt']
+        };
+
+        // Create Database in memory (ideal for the client-side demo to avoid storage-permission blocks)
+        dbInstance = await RxDB.createRxDatabase({
+          name: 'soc_local_db',
+          storage: RxDB.getRxStorageMemory()
+        });
+
+        console.log('RxDB Database created in-memory.');
+
+        // Add collections
+        await dbInstance.addCollections({
+          incidents: { schema: incidentSchema },
+          alerts: { schema: alertSchema },
+          notifications: { schema: notificationSchema }
+        });
+
+        console.log('RxDB collections initialized successfully.');
+
+        // Set up reactive subscriptions to local RxDB data for real-time rendering
+        dbInstance.incidents.find().$.subscribe(incidents => {
+          renderIncidents(incidents);
+        });
+
+        dbInstance.alerts.find().$.subscribe(alerts => {
+          renderAlerts(alerts);
+        });
+
+        dbInstance.notifications.find().$.subscribe(notifications => {
+          renderNotifications(notifications);
+        });
+
+      } catch (err) {
+        console.error('Failed to initialize RxDB:', err);
+        document.getElementById('statusText').innerText = 'RxDB Error';
+        document.getElementById('statusDot').className = 'status-dot offline';
+      }
+    }
+
+    // 2. Fetch data from REST Gateway and Sync into RxDB
+    async function syncWithGateway() {
+      try {
+        if (!dbInstance) return;
+
+        // Fetch from API Gateway
+        const incRes = await fetch(`${API_URL}/incidents`);
+        const alertRes = await fetch(`${API_URL}/alerts`);
+        const notifRes = await fetch(`${API_URL}/notifications`);
+
+        if (incRes.ok && alertRes.ok && notifRes.ok) {
+          const { incidents } = await incRes.json();
+          const alerts = await alertRes.json();
+          const notifications = await notifRes.json();
+
+          // Update connection status
+          document.getElementById('statusText').innerText = 'System Active';
+          document.getElementById('statusDot').className = 'status-dot';
+
+          // Sync into RxDB (upsert to overwrite or add new entries)
+          for (const inc of incidents) {
+            await dbInstance.incidents.upsert(inc);
+          }
+          for (const al of alerts) {
+            await dbInstance.alerts.upsert(al);
+          }
+          for (const no of notifications) {
+            await dbInstance.notifications.upsert(no);
+          }
+
+          // Update stats indicators
+          document.getElementById('statIncidentsCount').innerText = incidents.length;
+          document.getElementById('statAlertsCount').innerText = alerts.length;
+          document.getElementById('statNotificationsCount').innerText = notifications.length;
+        }
+      } catch (error) {
+        console.error('Synchronization with gateway failed:', error);
+        document.getElementById('statusText').innerText = 'Gateway Offline';
+        document.getElementById('statusDot').className = 'status-dot offline';
+      }
+    }
+
+    // 3. Render lists based on RxDB reactive query results
+    function renderIncidents(incidents) {
+      const listDiv = document.getElementById('incidentsList');
+      if (!incidents || incidents.length === 0) {
+        listDiv.innerHTML = '<div class="empty-state">No incidents filed. Use the form above to dispatch one.</div>';
+        return;
+      }
+
+      // Sort by newest
+      const sorted = [...incidents].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      listDiv.innerHTML = sorted.map(inc => {
+        const dateStr = new Date(inc.createdAt).toLocaleString();
+        return `
+          <div class="list-item">
+            <div class="item-header">
+              <span class="item-title">${inc.title}</span>
+              <span class="badge ${getSeverityBadgeClass(inc.severity)}">${inc.severity}</span>
+            </div>
+            <div class="item-meta">
+              <span>ID: #${inc.id}</span>
+              <span>•</span>
+              <span>Reported: ${dateStr}</span>
+            </div>
+            <div class="item-desc">${inc.description || 'No description provided.'}</div>
+            
+            <div class="actions-row">
+              <div>
+                <span class="badge ${getStatusBadgeClass(inc.status)}">${inc.status}</span>
+              </div>
+              <div>
+                <select class="status-select-sm" onchange="updateIncidentStatus('${inc.id}', this.value)">
+                  <option value="" disabled selected>Update Status</option>
+                  <option value="OPEN">OPEN</option>
+                  <option value="INVESTIGATING">INVESTIGATING</option>
+                  <option value="RESOLVED">RESOLVED</option>
+                  <option value="CLOSED">CLOSED</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAlerts(alerts) {
+      const listDiv = document.getElementById('alertsList');
+      if (!alerts || alerts.length === 0) {
+        listDiv.innerHTML = '<div class="empty-state">Waiting for threats to be intercepted...</div>';
+        return;
+      }
+
+      const sorted = [...alerts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      listDiv.innerHTML = sorted.map(al => {
+        const dateStr = new Date(al.createdAt).toLocaleString();
+        return `
+          <div class="list-item" style="border-left: 3px solid ${al.riskLevel === 'HIGH' || al.riskLevel === 'CRITICAL' ? 'var(--accent-red)' : 'var(--accent-yellow)'}">
+            <div class="item-header">
+              <span class="item-title" style="font-family: 'Share Tech Mono', monospace; font-size: 0.95rem;">🚨 ALERT_THREAT_DETECTED</span>
+              <span class="badge ${getSeverityBadgeClass(al.riskLevel)}">RISK: ${al.riskLevel}</span>
+            </div>
+            <div class="item-desc">${al.message}</div>
+            <div class="item-meta" style="margin-top: 0.5rem;">
+              <span>Incident Link: ID #${al.incidentId}</span>
+              <span>•</span>
+              <span>Intercepted: ${dateStr}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderNotifications(notifications) {
+      const listDiv = document.getElementById('notificationsList');
+      if (!notifications || notifications.length === 0) {
+        listDiv.innerHTML = '<div class="empty-state">No notification dispatches registered.</div>';
+        return;
+      }
+
+      const sorted = [...notifications].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+
+      listDiv.innerHTML = sorted.map(no => {
+        const dateStr = new Date(no.sentAt).toLocaleString();
+        return `
+          <div class="log-item">
+            <div>
+              <span class="log-recipient">&lt;${no.recipient}&gt;</span>
+              <span>${no.message}</span>
+            </div>
+            <div class="log-time">${dateStr} (Alert Ref: #${no.alertId})</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 4. Update Status REST request
+    async function updateIncidentStatus(id, newStatus) {
+      try {
+        const response = await fetch(`${API_URL}/incidents/${id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        if (response.ok) {
+          console.log(`Incident ${id} status updated to ${newStatus}`);
+          // Immediate sync update
+          await syncWithGateway();
+        } else {
+          alert('Failed to update incident status.');
+        }
+      } catch (err) {
+        console.error('Error updating status:', err);
+      }
+    }
+
+    // 5. Submit Form to REST Gateway
+    document.getElementById('incidentForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const title = document.getElementById('title').value;
+      const description = document.getElementById('description').value;
+      const severity = document.getElementById('severity').value;
+
+      try {
+        const response = await fetch(`${API_URL}/incidents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, severity })
+        });
+
+        if (response.ok) {
+          // Reset form fields
+          document.getElementById('title').value = '';
+          document.getElementById('description').value = '';
+          document.getElementById('severity').value = 'MEDIUM';
+          
+          console.log('Incident submitted successfully.');
+          
+          // Trigger immediate sync to show the new incident
+          setTimeout(syncWithGateway, 500);
+        } else {
+          const errData = await response.json();
+          alert(`Submission failed: ${errData.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        console.error('Error submitting incident:', err);
+        alert('Could not contact the API Gateway server.');
+      }
+    });
+
+    // Start lifecycle
+    async function main() {
+      await initRxDB();
+      await syncWithGateway();
+      
+      // Keep polling every 2.5 seconds to sync backend updates with RxDB reactive store
+      setInterval(syncWithGateway, 2500);
+    }
+
+    window.addEventListener('DOMContentLoaded', main);
+  </script>
+</body>
+</html>

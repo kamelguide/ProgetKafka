@@ -1,0 +1,12 @@
+{
+  "name": "cyber-security-detection-platform",
+  "version": "1.0.0",
+  "description": "Root orchestrator for Cyber Security Incident Detection microservices",
+  "scripts": {
+    "bootstrap": "npm --prefix api-gateway install && npm --prefix incident-service install && npm --prefix alert-service install && npm --prefix notification-service install",
+    "start:gateway": "npm --prefix api-gateway start",
+    "start:incident": "npm --prefix incident-service start",
+    "start:alert": "npm --prefix alert-service start",
+    "start:notification": "npm --prefix notification-service start"
+  }
+}

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package alert;
+
+service AlertService {
+  rpc ListAlerts (ListAlertsRequest) returns (ListAlertsResponse);
+  rpc GetAlertsByIncident (GetAlertsByIncidentRequest) returns (ListAlertsResponse);
+}
+
+message AlertResponse {
+  string id = 1;
+  string incidentId = 2;
+  string riskLevel = 3; // LOW, MEDIUM, HIGH, CRITICAL
+  string message = 4;
+  string createdAt = 5;
+}
+
+message ListAlertsRequest {}
+
+message ListAlertsResponse {
+  repeated AlertResponse alerts = 1;
+}
+
+message GetAlertsByIncidentRequest {
+  string incidentId = 1;
+}
